@@ -805,9 +805,10 @@
 						   "cdc-vdd-a-1p2v",
 						   "cdc-vddcx-1",
 						   "cdc-vddcx-2";
-		/*VENDOR_EDIT liuyan add 2013-11-26,chinese and america hpmic switch*/
-		cdc-hpmic_switch-1-supply = <&pm8941_l24>;
-		/*liuyan add end*/
+			cdc-vdd-mic-bias-supply = <&pm8941_l24>;
+			qcom,cdc-vdd-mic-bias-voltage = <3075000 3075000>;
+			qcom,cdc-vdd-mic-bias-current = <25000>;
+			qcom,cdc-on-demand-supplies = "cdc-vdd-mic-bias";
 
 			qcom,cdc-micbias-ldoh-v = <0x3>;
 			qcom,cdc-micbias-cfilt1-mv = <1800>;

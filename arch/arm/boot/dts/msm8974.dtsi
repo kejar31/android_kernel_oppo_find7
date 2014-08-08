@@ -805,10 +805,10 @@
 						   "cdc-vdd-a-1p2v",
 						   "cdc-vddcx-1",
 						   "cdc-vddcx-2";
-			cdc-vdd-mic-bias-supply = <&pm8941_l24>;
-			qcom,cdc-vdd-mic-bias-voltage = <3075000 3075000>;
-			qcom,cdc-vdd-mic-bias-current = <25000>;
-			qcom,cdc-on-demand-supplies = "cdc-vdd-mic-bias";
+			cdc-vdd-hpmic-switch-supply = <&pm8941_l24>;
+			qcom,cdc-vdd-hpmic-switch-voltage = <3075000 3075000>;
+			qcom,cdc-vdd-hpmic-switch-current = <25000>;
+			qcom,cdc-on-demand-supplies = "cdc-vdd-hpmic-switch";
 
 			qcom,cdc-micbias-ldoh-v = <0x3>;
 			qcom,cdc-micbias-cfilt1-mv = <1800>;

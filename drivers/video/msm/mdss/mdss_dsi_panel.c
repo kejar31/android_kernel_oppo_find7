@@ -140,13 +140,6 @@ struct dsi_panel_cmds cabc_user_interface_image_sequence;
 struct dsi_panel_cmds cabc_still_image_sequence;
 struct dsi_panel_cmds cabc_video_image_sequence;
 
-struct dsi_panel_cmds gamma1;
-struct dsi_panel_cmds gamma2;
-struct dsi_panel_cmds gamma3;
-struct dsi_panel_cmds gamma4;
-extern int gamma_index ;
-
-
 static bool flag_lcd_off = false;
 
 struct mdss_dsi_ctrl_pdata *panel_data;
@@ -169,155 +162,6 @@ enum
 int cabc_mode = CABC_HIGH_MODE; //defaoult mode level 3 in dtsi file
 
 static DEFINE_MUTEX(cabc_mutex);
-
-
-
-static char dcs_cmd_find7_0[2]  = {0xb0, 0x04}; 
-static char dcs_cmd_find7_1[20] = {0xc8, 0x01, 0x0A, 0xFD,
-								   0x03, 0x01, 0xE8, 0x00,
-								   0x00, 0x03, 0xFC, 0xF5,
-								   0xA1, 0x00, 0x00, 0x01,
-								   0xFD, 0x06, 0xFC, 0x00,};
-static char dcs_cmd_find7_2[2]  = {0xd6, 0x01}; 
-static char dcs_cmd_find7_3[2]  = {0xb0, 0x03}; 
-
-static struct dsi_cmd_desc user_defined_find7_gamma[] = {
-	{{DTYPE_GEN_WRITE2, 1, 0, 1, 0, sizeof(dcs_cmd_find7_0)},dcs_cmd_find7_0},
-	{{DTYPE_GEN_LWRITE, 1, 0, 1, 0, sizeof(dcs_cmd_find7_1)},dcs_cmd_find7_1},
-	{{DTYPE_GEN_WRITE2, 1, 0, 1, 0, sizeof(dcs_cmd_find7_2)},dcs_cmd_find7_2},
-	{{DTYPE_GEN_WRITE2, 1, 0, 1, 0, sizeof(dcs_cmd_find7_3)},dcs_cmd_find7_3},
-};
-
-void send_user_defined_gamma(char * buf)
-{
-	int i=0,len,limt_len,temp;
-	char temp_buf[100];
-	char * p1,*p2,*user_gamma=NULL;
-	struct dcs_cmd_req cmdreq;
-
-	mutex_lock(&cabc_mutex);
-	if(flag_lcd_off == true)
-    {
-        printk(KERN_INFO "lcd is off,don't allow to set user gamma !\n");
-        mutex_unlock(&cabc_mutex);
-        return;
-    }
-	if(get_pcb_version() < 20){
-		user_gamma = dcs_cmd_find7_1;
-		limt_len = sizeof(dcs_cmd_find7_1);
-	}
-	if(user_gamma == NULL) { mutex_unlock(&cabc_mutex); return; }
-	p1=buf;
-	p2=temp_buf;
-	pr_err("%s \n",p1);
-	while(*p1!='\0'){
-		if(*p1==' ') {p1++;continue;}	
-		*p2 = *p1;
-		p2++;
-		p1++;
-	}
-	*p2 ='\0';
-	p2=temp_buf;
-	len =strlen(p2);
-	pr_err("len = %d \n",len);
-	if( len/2 >limt_len){
-			 mutex_unlock(&cabc_mutex);
-			 pr_err("invalid gamma intput \n");
-			 return; 
-	}
-	for(i=0;i<len;i++)
-	{
-		if(*p2>='0' && *p2 <='9')
-			temp =*p2-'0';
-		else if(*p2>='a'&& *p2<='f')
-			temp =*p2-'a'+10;
-		else if(*p2>='A'&& *p2<='F')
-			temp =*p2-'A'+10;
-		if(i%2==0)
-			user_gamma[i/2] = temp*16;
-		else
-			user_gamma[i/2]+=temp;
-		p2++;
-	}
-	memset(&cmdreq, 0, sizeof(cmdreq));
-	cmdreq.cmds = user_defined_find7_gamma;
-	cmdreq.cmds_cnt = 4;
-	cmdreq.flags = CMD_REQ_COMMIT;
-	mdss_dsi_cmdlist_put(panel_data, &cmdreq);
-	mutex_unlock(&cabc_mutex);
-	return;
-}
-
-
-
-
-void set_gamma(int index)
-{
-	printk("%s : %d \n",__func__,index);
-	//if (get_pcb_version() >= HW_VERSION__20) { /* For Find7s */
-    //    return;
-    //}
-
-    mutex_lock(&cabc_mutex);
-
-	if(flag_lcd_off == true)
-    {
-        printk(KERN_INFO "lcd is off,don't allow to set gamma\n");
-        mutex_unlock(&cabc_mutex);
-        return;
-    }
-    mdss_dsi_clk_ctrl(panel_data, 1);
-	if(index <= 0 || index >4){
-		mutex_unlock(&cabc_mutex);
-        return;
-	}
-	switch(index)
-    {
-		case 1:
-			 mdss_dsi_panel_cmds_send(panel_data, &gamma1);
-			 break;
-		case 2:
-			 mdss_dsi_panel_cmds_send(panel_data, &gamma2);
-			 break;
-		case 3:
-			 mdss_dsi_panel_cmds_send(panel_data, &gamma3);
-			 break;
-		case 4:
-			 mdss_dsi_panel_cmds_send(panel_data, &gamma4);
-			 break;
-	}
-	mdss_dsi_clk_ctrl(panel_data, 0);
-    mutex_unlock(&cabc_mutex);
-}
-
-void set_resume_gamma(int index)
-{
-	printk("%s : %d \n",__func__,index);
-	//if (get_pcb_version() >= HW_VERSION__20) { /* For Find7s */
-    //    return;
-    //}
-   if(index <= 1 || index >4){
-        return;
-	}
-    switch(index)
-    {
-		case 1:
-			 mdss_dsi_panel_cmds_send(panel_data, &gamma1);
-			 break;
-		case 2:
-			 mdss_dsi_panel_cmds_send(panel_data, &gamma2);
-			 break;
-		case 3:
-			 mdss_dsi_panel_cmds_send(panel_data, &gamma3);
-			 break;
-		case 4:
-			 mdss_dsi_panel_cmds_send(panel_data, &gamma4);
-			 break;
-		default:
-			pr_err("%s : invalid gamma index %d yxr \n",__func__,index);
-			break;
-	}
-}
 
 int set_cabc(int level)
 {
@@ -1016,9 +860,6 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 		    get_pcb_version()>=22))){
 //yanghai and end
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds);
-			pr_err("%s: send cmd successfully\n", __func__);
-			set_resume_gamma(gamma_index);
-			//set_resume_gamma(2);
 		}
 	}
 	//yanghai  test
@@ -1676,16 +1517,6 @@ static int mdss_panel_parse_dt(struct device_node *np,
 		"qcom,mdss-dsi-cabc-still-image-command", "qcom,mdss-dsi-off-command-state");
 	mdss_dsi_parse_dcs_cmds(np, &cabc_video_image_sequence,
 		"qcom,mdss-dsi-cabc-video-command", "qcom,mdss-dsi-off-command-state");
-
-	mdss_dsi_parse_dcs_cmds(np, &gamma1,
-		"qcom,mdss-dsi-gamma1", "qcom,mdss-dsi-off-command-state");
-	mdss_dsi_parse_dcs_cmds(np, &gamma2,
-		"qcom,mdss-dsi-gamma2", "qcom,mdss-dsi-off-command-state");
-	mdss_dsi_parse_dcs_cmds(np, &gamma3,
-		"qcom,mdss-dsi-gamma3", "qcom,mdss-dsi-off-command-state");
-	mdss_dsi_parse_dcs_cmds(np, &gamma4,
-		"qcom,mdss-dsi-gamma4", "qcom,mdss-dsi-off-command-state");
-	
 #endif /*VENDOR_EDIT*/
 
 	return 0;

@@ -389,44 +389,6 @@ static ssize_t mdss_mdp_lcdoff_event(struct device *dev,
 /* OPPO 2013-11-26 yxq Add end */
 
 #ifdef VENDOR_EDIT
-/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/12  Add for gamma correction */
-extern int set_gamma(int index);
-
-extern int gamma_index;
-extern void send_user_defined_gamma(char * buf);
-
-static ssize_t mdss_set_gamma(struct device *dev,
-                               struct device_attribute *attr,
-                               const char *buf, size_t count)
-{
-    int index = 0;
-	char a[100];
-    sscanf(buf, "%du", &index);
-	pr_err("strlen = %d \n",strlen(buf));
-	if(strlen(buf)<=2)
-    set_gamma(index);
-	else{
-		strcpy(a,buf);
-		pr_err("%s \n",a);
-		if(get_pcb_version() < 20)
-		send_user_defined_gamma(a);
-	}
-    return count;
-}
-
-static ssize_t mdss_get_gamma(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	printk(KERN_INFO "get fix resume gamma index = %d\n",gamma_index);
-
-    return sprintf(buf, "%d\n", gamma_index);
-}
-
-
-#endif /*VENDOR_EDIT*/
-
-
-#ifdef VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/02/17  Add for set cabc */
 extern int set_cabc(int level);
 extern int cabc_mode;
@@ -461,11 +423,6 @@ static DEVICE_ATTR(lcdoff, S_IRUGO, mdss_mdp_lcdoff_event, NULL);
 #ifdef VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/02/17  Add for set cabc */ 
 static DEVICE_ATTR(cabc, S_IRUGO|S_IWUSR, mdss_get_cabc, mdss_set_cabc);
-#endif /*VENDOR_EDIT*/
-
-#ifdef VENDOR_EDIT
-/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/12  Add for gamma correction */
-static DEVICE_ATTR(gamma, S_IRUGO|S_IWUSR, mdss_get_gamma, mdss_set_gamma);
 #endif /*VENDOR_EDIT*/
 
 static void __mdss_fb_idle_notify_work(struct work_struct *work)
@@ -545,10 +502,6 @@ static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_cabc.attr,
 #endif /*VENDOR_EDIT*/
 
-#ifdef VENDOR_EDIT
-/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/12  Add for gamma correction */
-	&dev_attr_gamma.attr,
-#endif /*VENDOR_EDIT*/
 	&dev_attr_idle_time.attr,
 	&dev_attr_idle_notify.attr,
 	NULL,

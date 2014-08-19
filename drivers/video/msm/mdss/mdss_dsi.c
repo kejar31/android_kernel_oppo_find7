@@ -562,14 +562,11 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 
 	if (pdata->panel_info.type == MIPI_CMD_PANEL)
 		mdss_dsi_clk_ctrl(ctrl_pdata, 0);
+
 	pr_debug("%s-:\n", __func__);
 	return 0;
 }
-/* OPPO 2013-10-18 yxq added begin for debug */
-#ifdef VENDOR_EDIT
-void mmss_dump_j(void);
-#endif
-/* OPPO 2013-10-18 yxq added end */
+
 static int mdss_dsi_unblank(struct mdss_panel_data *pdata)
 {
 	int ret = 0;
@@ -668,11 +665,8 @@ int mdss_dsi_cont_splash_on(struct mdss_panel_data *pdata)
 	pr_debug("%s+: ctrl=%p ndx=%d\n", __func__,
 				ctrl_pdata, ctrl_pdata->ndx);
 
-#ifndef CONFIG_VENDOR_EDIT
-/* Xinqin.Yang@PhoneSW.Driver, 2013/12/26  Delete for panel had initialized */
 	WARN((ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT),
 		"Incorrect Ctrl state=0x%x\n", ctrl_pdata->ctrl_state);
-#endif /*CONFIG_VENDOR_EDIT*/
 
 	mdss_dsi_sw_reset(pdata);
 	mdss_dsi_host_init(mipi, pdata);
@@ -858,12 +852,6 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 		rc = mdss_dsi_off(pdata);
 		break;
 	case MDSS_EVENT_CONT_SPLASH_FINISH:
-/* OPPO 2013-10-18 yxq added begin for continous splash */
-#ifdef VENDOR_EDIT
-		pr_err("%s: MDSS_EVENT_CONT_SPLASH_FINISH\n", __func__);
-		mdss_dsi_on(pdata);
-#endif
-/* OPPO 2013-10-18 yxq added end */
 		ctrl_pdata->ctrl_state &= ~CTRL_STATE_MDP_ACTIVE;
 		if (ctrl_pdata->on_cmds.link_state == DSI_LP_MODE) {
 			rc = mdss_dsi_cont_splash_on(pdata);
@@ -892,11 +880,6 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 			/* Panel is Enabled in Bootloader */
 			rc = mdss_dsi_blank(pdata);
 		}
-/* OPPO 2013-10-18 yxq added begin for continous splash */
-#ifdef VENDOR_EDIT
-		 mdss_dsi_off(pdata);
-#endif
-/* OPPO 2013-10-18 yxq added end */
 		break;
 	case MDSS_EVENT_ENABLE_PARTIAL_UPDATE:
 		rc = mdss_dsi_ctl_partial_update(pdata);
@@ -1401,13 +1384,9 @@ ctrl_pdata->index=index;
 						__func__, __LINE__);
 		}
 	}
-#ifndef VENDOR_EDIT
-//yanghai modify for cmd panel patch
+
 	if (gpio_is_valid(ctrl_pdata->disp_te_gpio) &&
 					pinfo->type == MIPI_CMD_PANEL) {
-#else
-    if (gpio_is_valid(ctrl_pdata->disp_te_gpio)) {
-#endif
 		rc = gpio_request(ctrl_pdata->disp_te_gpio, "disp_te");
 		if (rc) {
 			pr_err("request TE gpio failed, rc=%d\n",
@@ -1435,62 +1414,10 @@ ctrl_pdata->index=index;
 			gpio_free(ctrl_pdata->disp_te_gpio);
 			return -ENODEV;
 		}
-//yanghai end for esd test
-	if (gpio_is_valid(28)) {
-
-		rc = gpio_tlmm_config(GPIO_CFG(
-				28, 0,
-				GPIO_CFG_INPUT,
-				GPIO_CFG_PULL_DOWN,
-				GPIO_CFG_2MA),
-				GPIO_CFG_ENABLE);
-
-		if (rc) {
-			pr_err("%s: unable to config esd to 28\n",
-				__func__);
-			gpio_free(28);
-
-		}
-
-		}
-//yanghai end for esd test end
-		pr_err("%s: te_gpio=%d\n", __func__,
+		pr_debug("%s: te_gpio=%d\n", __func__,
 					ctrl_pdata->disp_te_gpio);
 	}
 
-//yanghai add for cmd panel patch
-#ifdef CONFIG_VENDOR_EDIT
-// conifg msm gpio 28 to display ESDPIN
-		rc = gpio_request(28, "disp_esd");
-		if (rc) {
-			pr_err("yanghai request ESD gpio failed, rc=%d\n",
-			       rc);
-			gpio_free(28);
-			return -ENODEV;
-		}
-		rc = gpio_tlmm_config(GPIO_CFG(
-				28, 0,
-				GPIO_CFG_INPUT,
-				GPIO_CFG_PULL_DOWN,
-				GPIO_CFG_2MA),
-				GPIO_CFG_ENABLE);
-
-		if (rc) {
-			pr_err("%s: unable to ESD config tlmm = 28\n",
-				__func__);
-			gpio_free(28);
-			return -ENODEV;
-		}
-
-		rc = gpio_direction_input(28);
-		if (rc) {
-			pr_err("set_direction for ESD GPIO failed, rc=%d\n",
-			       rc);
-			gpio_free(28);
-			return -ENODEV;
-		}
-#endif
-//yanghai add end
 	ctrl_pdata->rst_gpio = of_get_named_gpio(ctrl_pdev->dev.of_node,
 			 "qcom,platform-reset-gpio", 0);
 	if (!gpio_is_valid(ctrl_pdata->rst_gpio))

@@ -1236,7 +1236,6 @@ static inline struct mdss_mdp_ctl *mdss_mdp_get_split_ctl(
 	return NULL;
 }
 
-
 int mdss_mdp_ctl_splash_finish(struct mdss_mdp_ctl *ctl, bool handoff)
 {
 	struct mdss_mdp_ctl *sctl = mdss_mdp_get_split_ctl(ctl);

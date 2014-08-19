@@ -357,37 +357,6 @@ static ssize_t mdss_mdp_show_blank_event(struct device *dev,
 	return ret;
 }
 
-/* OPPO 2013-11-26 yxq Add begin for suspend the device */
-#ifdef VENDOR_EDIT
-
-extern struct mdss_dsi_ctrl_pdata *panel_data;
-static ssize_t mdss_mdp_lcdoff_event(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	if(get_pcb_version() >= HW_VERSION__20){
-		struct mdss_panel_data * pdata;
-		int rc;
-		pr_err("find7s yxr\n");
-		pdata = &panel_data->panel_data;
-		do {
-			pr_err("pdata = %x yxr\n",(u32)pdata);
-			if (pdata->event_handler)
-				rc = pdata->event_handler(pdata, MDSS_EVENT_PANEL_OFF, NULL);
-			pdata = pdata->next;
-		} while (rc == 0 && pdata);
-		return rc;
-	}else{
-		struct fb_info *fbi = dev_get_drvdata(dev);
-    	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
-  	    pr_err("%s YXQ mfd=0x%p\n", __func__, mfd);
-		if (!mfd)
-			return -ENODEV;
-		return mdss_fb_send_panel_event(mfd, MDSS_EVENT_PANEL_OFF, NULL);
-	}
-}
-#endif
-/* OPPO 2013-11-26 yxq Add end */
-
 #ifdef VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/04/12  Add for gamma correction */
 extern int set_gamma(int index);
@@ -452,12 +421,6 @@ static ssize_t mdss_set_cabc(struct device *dev,
 
 #endif /*VENDOR_EDIT*/
 
-
-/* OPPO 2013-11-26 yxq Add begin for suspend the device */
-#ifdef VENDOR_EDIT
-static DEVICE_ATTR(lcdoff, S_IRUGO, mdss_mdp_lcdoff_event, NULL);
-#endif
-/* OPPO 2013-11-26 yxq Add end */
 #ifdef VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/02/17  Add for set cabc */ 
 static DEVICE_ATTR(cabc, S_IRUGO|S_IWUSR, mdss_get_cabc, mdss_set_cabc);
@@ -535,10 +498,6 @@ static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_msm_fb_type.attr,
 	&dev_attr_msm_fb_split.attr,
 	&dev_attr_show_blank_event.attr,
-/* OPPO 2013-11-26 yxq Add begin for suspend the device */
-#ifdef VENDOR_EDIT
-	&dev_attr_lcdoff.attr,
-#endif
 /* OPPO 2013-11-26 yxq Add end */
 #ifdef VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/02/17  Add for set cabc */

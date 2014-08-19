@@ -35,10 +35,6 @@
 #include <linux/pcb_version.h>
 /* OPPO 2014-02-11 yxq add end */
 #endif
-#ifdef VENDOR_EDIT
-/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/02/24  Add for ESD test */
-#include <linux/switch.h>
-#endif /*VENDOR_EDIT*/
 
 #define DT_CMD_HDR 6
 
@@ -53,85 +49,7 @@ DEFINE_LED_TRIGGER(bl_led_trigger);
 extern  int lm3630_bank_a_update_status(u32 bl_level);
 #endif
 
-#ifdef VENDOR_EDIT
-/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/02/24  Add for ESD test*/
-#define LCD_TE_GPIO  28
-DEFINE_SPINLOCK(te_count_lock);
-DEFINE_SPINLOCK(te_state_lock);
-
-unsigned long flags;
 static bool first_run_init=1;
-static bool first_run_reset=1;
-static bool cont_splash_flag;
-static int te_count = 0;
-static int irq_state = 1;
-static int irq;
-static int te_state = 0;
-static struct switch_dev display_switch;
-static struct delayed_work techeck_work;
-
-static irqreturn_t TE_irq_thread_fn(int irq, void *dev_id)
-{
-	spin_lock_irqsave(&te_count_lock, flags);
-	te_count ++;
-	spin_unlock_irqrestore(&te_count_lock, flags);
-	return IRQ_HANDLED;
-}
-
-static int operate_display_switch(void)
-{
-    int ret = 0;
-    printk("%s:state=%d.\n", __func__, te_state);
-
-    spin_lock_irqsave(&te_state_lock, flags);
-    if(te_state)
-        te_state = 0;
-    else
-        te_state = 1;
-    spin_unlock_irqrestore(&te_state_lock, flags);
-
-    switch_set_state(&display_switch, te_state);
-    return ret;
-}
-
-static void techeck_work_func( struct work_struct *work )
-{
-    if(te_count < 50)
-	{
-    	pr_err("yxr: te_count<50 %s\n",__func__);
-        printk("yxr------%s: lcd resetting ! te_count = %d \n",__func__,te_count);
-        printk("irq_state=%d\n", irq_state);
-        operate_display_switch();
-        spin_lock_irqsave(&te_count_lock, flags);
-        te_count = 0;
-        spin_unlock_irqrestore(&te_count_lock, flags);
-        schedule_delayed_work(&techeck_work, msecs_to_jiffies(2000));
-        return ;
-    }
-	//pr_err("yxr %s:te_count=%d\n",__func__,te_count);
-	spin_lock_irqsave(&te_count_lock, flags);
-	te_count = 0;
-	spin_unlock_irqrestore(&te_count_lock, flags);
-	schedule_delayed_work(&techeck_work, msecs_to_jiffies(2000));
-}
-
-
-static ssize_t attr_mdss_dispswitch(struct device *dev,
-                                     struct device_attribute *attr, char *buf)
-{
-    printk("ESD function test--------\n");
-    operate_display_switch();
-    return 0;
-}
-
-static struct class * mdss_lcd;
-static struct device * dev_lcd;
-static struct device_attribute mdss_lcd_attrs[] = {			
-	__ATTR(dispswitch, S_IRUGO|S_IWUSR, attr_mdss_dispswitch, NULL),	
-	__ATTR_NULL,		
-	};
-#endif /*VENDOR_EDIT*/
-
 
 #ifdef VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/02/17  Add for set cabc */
@@ -995,18 +913,15 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	struct mipi_panel_info *mipi;
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 
-	//pr_err("%s: ++", __func__);
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
 	}
 
-
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
 	mipi  = &pdata->panel_info.mipi;
-	pr_err("%s: gpio 58=%d,pannel index=%d\n", __func__,
-		gpio_get_value(58),ctrl->index);
+
 	pr_debug("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
 
 	if (ctrl->on_cmds.cmd_cnt){
@@ -1021,14 +936,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 			//set_resume_gamma(2);
 		}
 	}
-	//yanghai  test
-//if(ctrl->index==0){
-//if(0){
-	//mdss_dsi_dcs_read(ctrl,0x52, 0x00);
-//	mdss_dsi_dcs_read(ctrl,0x54, 0x00);
-//	mdss_dsi_dcs_read(ctrl,0x56, 0x00);
-//}
-//yanghai test end
+
 #ifdef VENDOR_EDIT
 /* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/02/17  Add for set cabc */
 	if(ctrl->index==0){
@@ -1046,22 +954,6 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	}
 #endif /*VENDOR_EDIT*/
 
-#ifdef VENDOR_EDIT
-/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/02/25  Add for ESD test */
-	if(ctrl->index==0  && get_boot_mode() != MSM_BOOT_MODE__FACTORY){
-		if(first_run_reset==1 && !cont_splash_flag){
-			first_run_reset=0;
-		}
-		else{
-			spin_lock_irqsave(&te_count_lock, flags);
-			te_count = 0;
-			spin_unlock_irqrestore(&te_count_lock, flags);
-			irq_state++;
-			enable_irq(irq);
-			schedule_delayed_work(&techeck_work, msecs_to_jiffies(5000));
-		}
-	}
-#endif /*VENDOR_EDIT*/
 	pr_debug("%s:-\n", __func__);
 	return 0;
 }
@@ -1085,23 +977,9 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 
 	mipi  = &pdata->panel_info.mipi;
 
-	if (ctrl->off_cmds.cmd_cnt){
-			if(ctrl->index==0){
-				if(LCD_id == 4 || get_pcb_version()>=22)
-					mdss_dsi_panel_cmds_send(panel_data, &ctrl->off_cmds);
-				else
-					mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
-			}
-		}
-#ifdef VENDOR_EDIT
-/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/02/25  Add for ESD test */
-	if(ctrl->index==0 && get_boot_mode() != MSM_BOOT_MODE__FACTORY){
-		cancel_delayed_work_sync(&techeck_work);
-		 	mdelay(6);
-		 	irq_state--;
-		 	disable_irq(irq);
-	}
-#endif /*VENDOR_EDIT*/
+	if (ctrl->off_cmds.cmd_cnt)
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds);
+
 	pr_debug("%s:-\n", __func__);
 	return 0;
 }
@@ -1743,37 +1621,6 @@ int mdss_dsi_panel_init(struct device_node *node,
     register_device_proc("lcd", (char *)panel_version, (char *)panel_manufacture);
 /* OPPO 2013-10-24 yxq Add end */
 #endif
-#ifdef VENDOR_EDIT
-/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/02/22  Add for ESD test*/
-	if (first_run_init==1 && get_boot_mode() != MSM_BOOT_MODE__FACTORY){  //for find7s
-		first_run_init=0;
-
-		irq = gpio_to_irq(LCD_TE_GPIO); //gpio 28 has configed in mdss_dsi.c	
-		rc = request_threaded_irq(irq, NULL, TE_irq_thread_fn,
-			IRQF_TRIGGER_RISING, "LCD_TE",NULL);
-		if (rc < 0) {
-			pr_err("Unable to register IRQ handler\n");
-			return -ENODEV;
-			}
-		INIT_DELAYED_WORK(&techeck_work, techeck_work_func );
-		schedule_delayed_work(&techeck_work, msecs_to_jiffies(20000));
-
-		display_switch.name = "dispswitch";
-
-		rc = switch_dev_register(&display_switch);
-		if (rc)
-		{
-			pr_err("Unable to register display switch device\n");
-			return rc;
-		}
-
-		/*dir: /sys/class/mdss_lcd/lcd_control*/
-		mdss_lcd = class_create(THIS_MODULE,"mdss_lcd");
-		mdss_lcd->dev_attrs = mdss_lcd_attrs;
-		device_create(mdss_lcd,dev_lcd,0,NULL,"lcd_control");
-		}
-#endif /*VENDOR_EDIT*/
-
 	rc = mdss_panel_parse_dt(node, ctrl_pdata);
 	if (rc) {
 		pr_err("%s:%d panel dt parse failed\n", __func__, __LINE__);
@@ -1793,11 +1640,6 @@ int mdss_dsi_panel_init(struct device_node *node,
         cont_splash_enabled = false;
     }
 #endif
-/* OPPO 2013-12-09 yxq Add end */
-#ifdef VENDOR_EDIT
-/* Xiaori.Yuan@Mobile Phone Software Dept.Driver, 2014/02/25  Add for ESD test */
-	cont_splash_flag = cont_splash_enabled;
-#endif /*VENDOR_EDIT*/
 	if (!cont_splash_enabled) {
 		pr_info("%s:%d Continuous splash flag not found.\n",
 				__func__, __LINE__);
